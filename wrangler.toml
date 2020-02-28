@@ -1,5 +1,5 @@
-name = "helloworld"
-type = "javascript"
+name = "worker-signed-s3-template"
+type = "webpack"
 
 account_id = ""
 workers_dev = true
