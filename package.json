@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "{{ project-name }}",
+  "name": "cloudflare-s4",
   "version": "1.0.0",
   "description": "A template for kick starting a Cloudflare Workers project",
   "main": "index.js",
@@ -11,9 +11,10 @@
   "author": "{{ authors }}",
   "license": "MIT",
   "devDependencies": {
-    "prettier": "^1.18.2"
+    "prettier": "^3.5.3"
   },
   "dependencies": {
-    "aws4fetch": "^1.0.3"
+    "aws4fetch": "^1.0.20",
+    "wrangler": "^3.0.0"
   }
 }

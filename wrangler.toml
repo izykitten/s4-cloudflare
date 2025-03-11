@@ -1,10 +1,18 @@
-name = "worker-signed-s3-template"
-type = "webpack"
+name = "s4-worker"
+type = "module"
 
-account_id = ""
-workers_dev = true
-route = ""
-zone_id = ""
+# Set true to:  enables use of *.workers.dev subdomain to deploy your Worker.
+workers_dev = false
+routes = [
+  { pattern = "YOUR-CUSTOM-DOMAIN", custom_domain = true }
+]
+compatibility_date = "2025-03-05"
+main= "index.js"
 
-[env.dev]
-vars = { AWS_ACCESS_KEY_ID = "", AWS_SECRET_ACCESS_KEY = "", AWS_DEFAULT_REGION = "", AWS_S3_BUCKET = ""}
+[vars]
+AWS_ACCESS_KEY_ID = "your S4 access key id"
+AWS_SECRET_ACCESS_KEY = "your S4 secret access key"
+AWS_DEFAULT_REGION = "g"
+AWS_S3_BUCKET = "YOUR-BUCKET"
+#if you want to allow clients to list objects, otherwise false
+ALLOW_LIST_BUCKET = "true"
