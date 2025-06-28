@@ -30,7 +30,7 @@ async function handleRequest(request) {
     let originalPath = url.pathname;
     // Allow root path ("/") to be viewed by anyone
     if (!(originalPath === "/" || originalPath === "") && !userAgent.includes("UnityPlayer") && !userAgent.includes("VRChat")) {
-        return new Response("Forbidden!", { status: 403 });
+        return await serve403();
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method Not Allowed", { status: 405 });
@@ -83,4 +83,14 @@ async function serve404() {
         return new Response(response.body, { status: 404, headers: response.headers });
     }
     return new Response("Not Found", { status: 404 });
+}
+
+async function serve403() {
+    const s3Url = new URL("https://" + `${AWS_S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.s4.mega.io/403.html`);
+    const signedRequest = await aws.sign(s3Url);
+    const response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
+    if (response.status === 200) {
+        return new Response(response.body, { status: 403, headers: response.headers });
+    }
+    return new Response("Forbidden!", { status: 403 });
 }
