@@ -36,10 +36,16 @@ async function handleRequest(request) {
     // Remove trailing slashes
     path = path.replace(/\/$/, '');
 
-    // Directory or root request: serve index.html
     let originalPath = path;
-    if (url.pathname.endsWith("/") || path === "") {
+    let tryHtml = false;
+    let isDir = url.pathname.endsWith("/") || path === "";
+
+    if (isDir) {
         path = path + (path ? "/" : "") + "index.html";
+    } else if (!path.includes('.')) {
+        // If no extension, try .html
+        path = path + ".html";
+        tryHtml = true;
     }
 
     // Reject list bucket requests unless configuration allows it
@@ -54,7 +60,14 @@ async function handleRequest(request) {
     var signedRequest = await aws.sign(url);
     let response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
 
-    // If not found, try to serve 404.html
+    // If not found and we tried .html, try as directory index.html
+    if (response.status === 404 && tryHtml) {
+        url.pathname = "/" + originalPath + "/index.html";
+        signedRequest = await aws.sign(url);
+        response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
+    }
+
+    // If still not found, try to serve 404.html
     if (response.status === 404 && path !== "404.html") {
         url.pathname = "/404.html";
         signedRequest = await aws.sign(url);
