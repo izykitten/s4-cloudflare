@@ -9,3 +9,6 @@ main= "index.js"
 AWS_DEFAULT_REGION = "g"
 AWS_S3_BUCKET = "vrc-cdn"
 ALLOW_LIST_BUCKET = "false"
+
+[observability.logs]
+enabled = true

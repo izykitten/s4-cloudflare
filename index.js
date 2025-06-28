@@ -60,13 +60,17 @@ async function handleRequest(request) {
     }
     url.hostname = `${AWS_S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.s4.mega.io`;
     url.pathname = "/" + path;
+    console.log("Requesting S3 URL:", url.toString());
     var signedRequest = await aws.sign(url);
+    console.log("Signed S3 URL:", signedRequest.url);
     let response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
 
     // If not found and we tried .html, try as directory index.html (but not for root)
     if (response.status === 404 && tryHtml && originalPath !== "") {
         url.pathname = "/" + originalPath + "/index.html";
+        console.log("Fallback to S3 URL:", url.toString());
         signedRequest = await aws.sign(url);
+        console.log("Signed fallback S3 URL:", signedRequest.url);
         response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
     }
 
