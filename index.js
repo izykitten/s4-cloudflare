@@ -25,7 +25,6 @@ function isListBucketRequest(path) {
 }
 
 async function handleRequest(request) {
-
     // Only allow GET and HEAD methods
     if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method Not Allowed", { status: 405 });
@@ -37,22 +36,32 @@ async function handleRequest(request) {
     // Remove trailing slashes
     path = path.replace(/\/$/, '');
 
+    // Directory or root request: serve index.html
+    let originalPath = path;
+    if (url.pathname.endsWith("/") || path === "") {
+        path = path + (path ? "/" : "") + "index.html";
+    }
 
     // Reject list bucket requests unless configuration allows it
-    if (isListBucketRequest(path) && ALLOW_LIST_BUCKET !== "true") {
+    if (isListBucketRequest(originalPath) && ALLOW_LIST_BUCKET !== "true") {
         return new Response(null, {
             status: 404,
             statusText: "Not Found"
         });
     }
     url.hostname = `${AWS_S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.s4.mega.io`;
+    url.pathname = "/" + path;
     var signedRequest = await aws.sign(url);
-    console.log("Signed Request URL:", signedRequest.url);
-    console.log("Hostname: ", signedRequest.hostname)
-    console.log("Signed Request Method:", signedRequest.method);
-    console.log("Signed Request Headers:", [...signedRequest.headers.entries()]);
-    console.log("Signed Request Body:", signedRequest.body);
-    console.log("Signed Request Mode:", signedRequest.mode);
-    console.log("Signed Request Cache:", signedRequest.cache);
-    return await fetch(signedRequest, { "cf": { "cacheEverything": true } });
+    let response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
+
+    // If not found, try to serve 404.html
+    if (response.status === 404 && path !== "404.html") {
+        url.pathname = "/404.html";
+        signedRequest = await aws.sign(url);
+        response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
+        if (response.status === 200) {
+            return new Response(response.body, { status: 404, headers: response.headers });
+        }
+    }
+    return response;
 }
