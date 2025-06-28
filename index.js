@@ -26,16 +26,17 @@ function isListBucketRequest(path) {
 
 async function handleRequest(request) {
     const userAgent = request.headers.get("user-agent") || "";
-    if (!userAgent.includes("UnityPlayer") && !userAgent.includes("VRChat")) {
-        return new Response("Forbidden: Invalid User-Agent", { status: 403 });
+    const url = new URL(request.url);
+    let originalPath = url.pathname;
+    // Allow root path ("/") to be viewed by anyone
+    if (!(originalPath === "/" || originalPath === "") && !userAgent.includes("UnityPlayer") && !userAgent.includes("VRChat")) {
+        return new Response("Forbidden!", { status: 403 });
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method Not Allowed", { status: 405 });
     }
 
-    const url = new URL(request.url);
     let s3Key;
-    let originalPath = url.pathname;
 
     // Normalize path
     if (originalPath === "/" || originalPath === "") {
