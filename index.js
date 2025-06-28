@@ -25,6 +25,10 @@ function isListBucketRequest(path) {
 }
 
 async function handleRequest(request) {
+    const userAgent = request.headers.get("user-agent") || "";
+    if (!userAgent.includes("UnityPlayer") && !userAgent.includes("VRChat")) {
+        return new Response("Forbidden: Invalid User-Agent", { status: 403 });
+    }
     if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method Not Allowed", { status: 405 });
     }
