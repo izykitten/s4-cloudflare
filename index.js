@@ -38,10 +38,13 @@ async function handleRequest(request) {
 
     let originalPath = path;
     let tryHtml = false;
-    let isDir = url.pathname.endsWith("/") || path === "";
+    let isRoot = url.pathname === "/" || path === "";
+    let isDir = !isRoot && url.pathname.endsWith("/");
 
-    if (isDir) {
-        path = path + (path ? "/" : "") + "index.html";
+    if (isRoot) {
+        path = "index.html";
+    } else if (isDir) {
+        path = path + "/index.html";
     } else if (!path.includes('.')) {
         // If no extension, try .html
         path = path + ".html";
