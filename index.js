@@ -25,64 +25,57 @@ function isListBucketRequest(path) {
 }
 
 async function handleRequest(request) {
-    // Only allow GET and HEAD methods
     if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method Not Allowed", { status: 405 });
     }
 
-    var url = new URL(request.url);
-    // Remove leading slashes from path
-    let path = url.pathname.replace(/^\//, '');
-    // Remove trailing slashes
-    path = path.replace(/\/$/, '');
+    const url = new URL(request.url);
+    let s3Key;
+    let originalPath = url.pathname;
 
-    let originalPath = path;
-    let tryHtml = false;
-    let isRoot = url.pathname === "/" || path === "";
-    let isDir = !isRoot && url.pathname.endsWith("/");
-    let isErrorPage = path === "404.html";
-
-    if (isRoot) {
-        path = "index.html";
-    } else if (isDir) {
-        path = path + "/index.html";
-    } else if (!path.includes('.') && !isErrorPage) {
-        // If no extension and not error page, try .html
-        path = path + ".html";
-        tryHtml = true;
-    }
-
-    // Reject list bucket requests unless configuration allows it
-    if (isListBucketRequest(originalPath) && ALLOW_LIST_BUCKET !== "true") {
-        return new Response(null, {
-            status: 404,
-            statusText: "Not Found"
-        });
-    }
-    url.hostname = `${AWS_S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.s4.mega.io`;
-    url.pathname = "/" + path;
-    console.log("Requesting S3 URL:", url.toString());
-    var signedRequest = await aws.sign(url);
-    console.log("Signed S3 URL:", signedRequest.url);
-    let response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
-
-    // If not found and we tried .html, try as directory index.html (but not for root or error page)
-    if (response.status === 404 && tryHtml && originalPath !== "" && !isErrorPage) {
-        url.pathname = "/" + originalPath + "/index.html";
-        console.log("Fallback to S3 URL:", url.toString());
-        signedRequest = await aws.sign(url);
-        console.log("Signed fallback S3 URL:", signedRequest.url);
-        response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
-    }
-
-    // If still not found, try to serve 404.html
-    if (response.status === 404 && path !== "404.html") {
-        url.pathname = "/404.html";
-        signedRequest = await aws.sign(url);
-        response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
-        if (response.status === 200) {
-            return new Response(response.body, { status: 404, headers: response.headers });
+    // Normalize path
+    if (originalPath === "/" || originalPath === "") {
+        s3Key = "index.html";
+    } else if (originalPath === "/404" || originalPath === "/404.html") {
+        s3Key = "404.html";
+    } else if (originalPath.endsWith("/")) {
+        s3Key = originalPath.replace(/^\//, "").replace(/\/$/, "") + "/index.html";
+    } else if (!originalPath.split("/").pop().includes('.')) {
+        // No extension: try .html, then /index.html
+        s3Key = originalPath.replace(/^\//, "") + ".html";
+        let response = await fetchS3(s3Key);
+        if (response.status === 404) {
+            s3Key = originalPath.replace(/^\//, "") + "/index.html";
+            response = await fetchS3(s3Key);
+            if (response.status === 404) {
+                return await serve404();
+            }
         }
+        return response;
+    } else {
+        s3Key = originalPath.replace(/^\//, "");
+    }
+
+    let response = await fetchS3(s3Key);
+    if (response.status === 404) {
+        return await serve404();
     }
     return response;
+}
+
+async function fetchS3(s3Key) {
+    const s3Url = new URL("https://" + `${AWS_S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.s4.mega.io/` + s3Key);
+    console.log("Requesting S3 URL:", s3Url.toString());
+    const signedRequest = await aws.sign(s3Url);
+    return await fetch(signedRequest, { "cf": { "cacheEverything": true } });
+}
+
+async function serve404() {
+    const s3Url = new URL("https://" + `${AWS_S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.s4.mega.io/404.html`);
+    const signedRequest = await aws.sign(s3Url);
+    const response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
+    if (response.status === 200) {
+        return new Response(response.body, { status: 404, headers: response.headers });
+    }
+    return new Response("Not Found", { status: 404 });
 }
