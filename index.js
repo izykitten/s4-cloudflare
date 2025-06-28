@@ -40,13 +40,14 @@ async function handleRequest(request) {
     let tryHtml = false;
     let isRoot = url.pathname === "/" || path === "";
     let isDir = !isRoot && url.pathname.endsWith("/");
+    let isErrorPage = path === "404.html";
 
     if (isRoot) {
         path = "index.html";
     } else if (isDir) {
         path = path + "/index.html";
-    } else if (!path.includes('.')) {
-        // If no extension, try .html
+    } else if (!path.includes('.') && !isErrorPage) {
+        // If no extension and not error page, try .html
         path = path + ".html";
         tryHtml = true;
     }
@@ -65,8 +66,8 @@ async function handleRequest(request) {
     console.log("Signed S3 URL:", signedRequest.url);
     let response = await fetch(signedRequest, { "cf": { "cacheEverything": true } });
 
-    // If not found and we tried .html, try as directory index.html (but not for root)
-    if (response.status === 404 && tryHtml && originalPath !== "") {
+    // If not found and we tried .html, try as directory index.html (but not for root or error page)
+    if (response.status === 404 && tryHtml && originalPath !== "" && !isErrorPage) {
         url.pathname = "/" + originalPath + "/index.html";
         console.log("Fallback to S3 URL:", url.toString());
         signedRequest = await aws.sign(url);
