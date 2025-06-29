@@ -75,7 +75,7 @@ async function fetchS3(s3Key) {
     // Determine if the file is a video by extension
     const videoExtensions = [".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v", ".mpg", ".mpeg"];
     const isVideo = videoExtensions.some(ext => s3Key.toLowerCase().endsWith(ext));
-    let response = await fetch(signedRequest, { "cf": { "cacheEverything": !isVideo } });
+    let response = await fetch(signedRequest, { "cf": { "cacheEverything": !isVideo, "cacheTtl": !isVideo ? 86400 : undefined } });
     if (isVideo) {
         // Remove any cache headers and set no-store
         const newHeaders = new Headers(response.headers);
