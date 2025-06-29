@@ -72,7 +72,19 @@ async function fetchS3(s3Key) {
     const s3Url = new URL("https://" + `${AWS_S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.s4.mega.io/` + s3Key);
     console.log("Requesting S3 URL:", s3Url.toString());
     const signedRequest = await aws.sign(s3Url);
-    return await fetch(signedRequest, { "cf": { "cacheEverything": true } });
+    // Determine if the file is a video by extension
+    const videoExtensions = [".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v", ".mpg", ".mpeg"];
+    const isVideo = videoExtensions.some(ext => s3Key.toLowerCase().endsWith(ext));
+    let response = await fetch(signedRequest, { "cf": { "cacheEverything": !isVideo } });
+    if (isVideo) {
+        // Remove any cache headers and set no-store
+        const newHeaders = new Headers(response.headers);
+        newHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+        newHeaders.delete("Expires");
+        newHeaders.delete("Pragma");
+        return new Response(response.body, { status: response.status, headers: newHeaders });
+    }
+    return response;
 }
 
 async function serve404() {
